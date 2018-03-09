@@ -53,9 +53,9 @@ for index, fname in enumerate(list_of_file):
         # Tokenize
         tokens = word_tokenize(texts)
         # Filter Tokens is alphabetical and keep the in lower case
-        tokens = [t.lower() for t in tokens if t.isalpha()]
-        # Filter by stopwords and stemming
-        tokens_norm = [t for t in tokens if t not in stop]
+        # Filter by stopwords
+        tokens_norm = [t.lower() for t in tokens if t.isalpha() and t not in stop]
+
         # Tokes neighbors window
         wnd = []
         for t in tokens_norm:
