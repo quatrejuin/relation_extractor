@@ -24,11 +24,11 @@ def get_expan_terms(aword):
 
 def add_conditional_frequence_table(wnd):
     global cfd
-    for term in wnd[HALF_WND_SIZE:-1]:
-        new_term = wnd[-1]
+    new_term = wnd[-1]
+    for term in wnd[-HALF_WND_SIZE:-1]:
         if term != new_term:
             cfd[term][new_term] += 1
-            cfd[new_term][term] += 1
+            cfd[new_term][term] = cfd[term][new_term]
 
 
 if len(sys.argv) > 1:
@@ -54,14 +54,14 @@ for index, fname in enumerate(list_of_file):
         tokens = word_tokenize(texts)
         # Filter Tokens is alphabetical and keep the in lower case
         # Filter by stopwords
-        tokens_norm = [t.lower() for t in tokens if t.isalpha() and t not in stop]
+        tokens_norm = [t.lower() for t in tokens if t.isalpha() and (t.lower() not in stop)]
 
         # Tokes neighbors window
         wnd = []
         for t in tokens_norm:
             wnd.append(t)
-            wnd = wnd[:WND_SIZE]
-            # Add to conditional frequence table
+            wnd = wnd[-WND_SIZE:]
+            # Add to conditional frequency table
             add_conditional_frequence_table(wnd)
 
 pickle.dump(cfd, open("/Users/jason.wu/Downloads/ap_extract_relation_dump_cfd", "wb"))
