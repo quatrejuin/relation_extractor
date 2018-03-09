@@ -5,39 +5,46 @@ from nltk import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 import re
+import pdb
+import pickle
+import time
 
+# CONSTANTS
+WND_SIZE = 10
+HALF_WND_SIZE = int(WND_SIZE/2)
+MIN_COOCC = 10
+TOP_N = 10
 
 # Create Co-occurrence tuple for wnd[-1] with all other wnd[i]
-def create_cooccurrence_pair(wnd):
-    return [tuple([t, wnd[-1]]) for t in wnd[int(WND_SIZE / 2):-1] if t != wnd[-1]]
-
-
-# Build up two sides relations, simple add the reverted pair for each existing.
-def double_rel(list):
-    for pair in list:
-        yield pair
-        yield pair[::-1]
-
-
 # Get the expansion term for a word.
 def get_expan_terms(aword):
-    return [rw for rw, fw in cfd[aword].most_common(10)]
+    global MIN_COOCC
+    return [rw for rw, fw in cfd[aword].most_common(TOP_N) if fw > MIN_COOCC]
+
+
+def add_conditional_frequence_table(wnd):
+    global cfd
+    for term in wnd[HALF_WND_SIZE:-1]:
+        new_term = wnd[-1]
+        if term != new_term:
+            cfd[term][new_term] += 1
+            cfd[new_term][term] += 1
 
 
 if len(sys.argv) > 1:
     # Define the data path
     data_path = sys.argv[1]
 
+start_time = time.time()
 
 list_of_file = sorted(glob.glob(data_path))
-list_of_rels = []
-WND_SIZE = 10
-MIN_COOCC = 10
+cfd = nltk.ConditionalFreqDist()
 
 stop = set(stopwords.words('english'))
 ps = PorterStemmer()
 
-for fname in list_of_file:
+for index, fname in enumerate(list_of_file):
+    print("No.{} File: {}".format(index, fname))
     with open(fname, encoding='utf-8') as file:
         raw = file.read()
         # Extract all the <TEXT> field
@@ -53,18 +60,11 @@ for fname in list_of_file:
         wnd = []
         for t in tokens_norm:
             wnd.append(t)
-            if len(wnd) > WND_SIZE:
-                wnd.pop(0)
-            new_rels = create_cooccurrence_pair(wnd)
-            list_of_rels += new_rels
-    # Build up two sides relations, simple add the reverted pair for each existing.
-    all_rels = [x for x in double_rel(list_of_rels)]
-    cfd = nltk.ConditionalFreqDist(all_rels)
-    # Filter the cooccurrence, remove the COOCC <= MIN_COOCC
-    for w in cfd:
-        fd = cfd[w]
-        for ww in list(fd):
-            if fd[ww] <= MIN_COOCC:
-                fd.pop(ww)
+            wnd = wnd[:WND_SIZE]
+            # Add to conditional frequence table
+            add_conditional_frequence_table(wnd)
 
-print(get_expan_terms("trade"))
+pickle.dump(cfd, open("/Users/jason.wu/Downloads/ap_extract_relation_dump_cfd", "wb"))
+print("Time: {}".format(time.time()-start_time))
+
+pdb.set_trace()
