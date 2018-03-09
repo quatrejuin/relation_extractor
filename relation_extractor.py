@@ -45,7 +45,7 @@ ps = PorterStemmer()
 
 for index, fname in enumerate(list_of_file):
     print("No.{} File: {}".format(index, fname))
-    with open(fname, encoding='utf-8') as file:
+    with open(fname, encoding='latin') as file:
         raw = file.read()
         # Extract all the <TEXT> field
         result = re.findall(r'<TEXT>(.*?)</TEXT>', raw, re.DOTALL)
