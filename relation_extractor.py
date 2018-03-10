@@ -6,14 +6,14 @@ from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 import re
 import pdb
-import pickle
+import ujson
 import time
 
 # CONSTANTS
-WND_SIZE = 10
-HALF_WND_SIZE = int(WND_SIZE/2)
+TERM_DISTANCE = 5
+WND_SIZE = TERM_DISTANCE * 2
 MIN_COOCC = 10
-TOP_N = 10
+TOP_N = 20
 
 # Create Co-occurrence tuple for wnd[-1] with all other wnd[i]
 # Get the expansion term for a word.
@@ -25,7 +25,7 @@ def get_expan_terms(aword):
 def add_conditional_frequence_table(wnd):
     global cfd
     new_term = wnd[-1]
-    for term in wnd[-HALF_WND_SIZE:-1]:
+    for term in wnd[-TERM_DISTANCE:-1]:
         if term != new_term:
             cfd[term][new_term] += 1
             cfd[new_term][term] = cfd[term][new_term]
@@ -54,7 +54,7 @@ for index, fname in enumerate(list_of_file):
         tokens = word_tokenize(texts)
         # Filter Tokens is alphabetical and keep the in lower case
         # Filter by stopwords
-        tokens_norm = [t.lower() for t in tokens if t.isalpha() and (t.lower() not in stop)]
+        tokens_norm = [ps.stem(t.lower()) for t in tokens if t.isalpha() and (t.lower() not in stop)]
 
         # Tokes neighbors window
         wnd = []
@@ -64,7 +64,18 @@ for index, fname in enumerate(list_of_file):
             # Add to conditional frequency table
             add_conditional_frequence_table(wnd)
 
-pickle.dump(cfd, open("/Users/jason.wu/Downloads/ap_extract_relation_dump_cfd", "wb"))
-print("Time: {}".format(time.time()-start_time))
+print("Time1: {}".format(time.time()-start_time))
+
+cfd_mini = nltk.ConditionalFreqDist()
+for w in cfd:
+    top_list = cfd[w].most_common(TOP_N)
+    cfd_mini[w] = dict([(w, f) for w, f in top_list if f > MIN_COOCC])
+
+print("Time2: {}".format(time.time()-start_time))
+
+ujson.dump(cfd_mini, open("/Users/jason.wu/Downloads/ap_cfd_dis{}_min{}_top{}_stm.json".format(
+    TERM_DISTANCE, MIN_COOCC, TOP_N), "w"))
+
+print("Time3: {}".format(time.time()-start_time))
 
 pdb.set_trace()
