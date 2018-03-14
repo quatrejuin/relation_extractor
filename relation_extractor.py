@@ -19,14 +19,22 @@ def get_expan_terms(aword):
 
 def get_exapn_for_query(query_text):
     qt = nltk.word_tokenize(query_text)
-    expans = {}
+    expans = nltk.FreqDist()
     for query_term in qt:
         expan_candidats = get_expan_terms(query_term)
-        list_scores = {ex_term: cfd[term_i][term_j] for ex_term in expan_candidats}
-        expans.update(list_scores)
+        # Because the different query item may get the same expansion term.
+        # We should sum the same expansion term scores for the different query items
+        list_scores = {ex_term: cfd[query_term][ex_term] for ex_term in expan_candidats}
+        # P(term_j | Q)
+        #    =      lambda * P_ml(term_j | Query) +
+        #             (1-lambda)* sum{ P( term_j | term_i) * P_ml( term_i | Query) }
+        #    =      l * frequency_in_query(term_j)/length(Query) +
+        #              (1-l)* sum_{i}{ score_term_term(term_i, term_j) * frequency_in_query(term_i)/length(Query) }
+        # Here we do the sum part
+        expans = expans + nltk.FreqDist(list_scores)
     # Get the most TOP_N from expans
-    expans= dict(sorted(expans.items(), key=lambda x: x[1], reverse=True)[:TOP_N])
-    return expans
+    expans_topn = expans.most_common(TOP_N)
+    return expans_topn
 
 # Calculate P( term_j | term_i )
 # For the cooccurrence,
