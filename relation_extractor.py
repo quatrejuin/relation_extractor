@@ -32,8 +32,6 @@ def get_exapn_for_query(query_text):
         #              (1-l)* sum_{i}{ score_term_term(term_i, term_j) * frequency_in_query(term_i)/length(Query) }
         # Here we do the sum part
         expans = expans + nltk.FreqDist(list_scores)
-    # Get the most TOP_N from expans
-    expans_topn = expans.most_common(TOP_N)
     return expans_topn
 
 # Calculate P( term_j | term_i )
