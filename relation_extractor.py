@@ -22,7 +22,7 @@ def get_exapn_for_query(query_text):
     expans = {}
     for query_term in qt:
         expan_candidats = get_expan_terms(query_term)
-        list_scores = {ex_term: score_term_in_query(ex_term, qt) for ex_term in expan_candidats}
+        list_scores = {ex_term: cfd[term_i][term_j] for ex_term in expan_candidats}
         expans.update(list_scores)
     # Get the most TOP_N from expans
     expans= dict(sorted(expans.items(), key=lambda x: x[1], reverse=True)[:TOP_N])
@@ -44,10 +44,10 @@ def get_exapn_for_query(query_text):
 #                       =  log10 ---------------------------------------------------------------
 #                                  sum_k  #coocc(term_i, term_k) x sum_k  #coocc(term_j, term_k)
 #
-def score_term_in_term(term_j, term_i):
+def score_term_in_term(term_j, term_i, cfd_N):
     global cfd
     if PMI_FLAG:
-        pmi = math.log10(cfd[term_i][term_j]*cfd.N() / (cfd[term_i].N()*cfd[term_j].N()))
+        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (cfd[term_i].N()*cfd[term_j].N()))
         r = pmi
     else:
         p_term_j_in_term_i = cfd[term_i][term_j] / cfd[term_i].N()
@@ -55,18 +55,19 @@ def score_term_in_term(term_j, term_i):
     return r
 
 
+# Indri va faire ça, on ne fait pas le calcul
 # P(term_j | Q)
 #    =      lambda * P_ml(term_j | Query) +
 #             (1-lambda)* sum{ P( term_j | term_i) * P_ml( term_i | Query) }
 #    =      l * frequency_in_query(term_j)/length(Query) +
 #              (1-l)* sum_{i}{ score_term_term(term_i, term_j) * frequency_in_query(term_i)/length(Query) }
 #
-def score_term_in_query(term_j, qt_list, l=0.5):
-    fd = nltk.FreqDist(qt_list)
-    # If term_j is not in the fd, fd[term_j] equals 0
-    r = l * fd[term_j] / len(qt_list) + \
-        (1-l) * sum([cfd[term_i][term_j] * fd[term_i]/len(qt_list) for term_i in qt_list])
-    return r
+# def score_term_in_query(term_j, qt_list, l=0.5):
+#     fd = nltk.FreqDist(qt_list)
+#     # If term_j is not in the fd, fd[term_j] equals 0
+#     r = l * fd[term_j] / len(qt_list) + \
+#         (1-l) * sum([cfd[term_i][term_j] * fd[term_i]/len(qt_list) for term_i in qt_list])
+#     return r
 
 
 def add_conditional_frequence_table(wnd):
@@ -133,8 +134,11 @@ def extract_cooccurence():
 
     cfd_filter = nltk.ConditionalFreqDist()
     # Filter the MIN_COOCC and Calculate the score
+
+    # Calculate cfd.N()
+    cfd_N = cfd.N()
     for term_i in cfd:
-        cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i)
+        cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i, cfd_N)
                                             for term_j in cfd[term_i] if cfd[term_i][term_j] > MIN_COOCC})
 
     cfd_topn = nltk.ConditionalFreqDist()
@@ -166,7 +170,7 @@ WND_SIZE = TERM_DISTANCE * 2
 MIN_COOCC = 10
 TOP_N = 10
 DOUBLE_TOP_N = TOP_N * 2
-PMI_FLAG = False
+PMI_FLAG = True
 STOP_FLAG = True
 
 # GLOBALS
