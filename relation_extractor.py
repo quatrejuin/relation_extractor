@@ -134,7 +134,7 @@ def extract_cooccurence():
             list_freq += nltk.FreqDist(tokens_norm)
 
             # Tokes neighbors window
-            wnd = [''*WND_SIZE]
+            wnd = []
             for t in tokens_norm:
                 wnd.append(t)
                 wnd = wnd[-WND_SIZE:]
