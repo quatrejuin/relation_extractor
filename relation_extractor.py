@@ -56,10 +56,10 @@ def get_exapn_for_query(query_text):
 def score_term_in_term(term_j, term_i, cfd_N):
     global cfd
     if PMI_FLAG:
-        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (list_freq(term_i)*list_freq(term_j)))*(TERM_DISTANCE*2)**2
+        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (list_freq[term_i]*list_freq[term_j]))*(TERM_DISTANCE*2)**2
         r = pmi
     else:
-        p_term_j_in_term_i = cfd[term_i][term_j] / list_freq(term_i)*TERM_DISTANCE*2
+        p_term_j_in_term_i = cfd[term_i][term_j] / list_freq[term_i]*TERM_DISTANCE*2
         r = p_term_j_in_term_i
     return r
 
@@ -98,7 +98,7 @@ def reload_cfd_json(fname):
 
 
 def extract_cooccurence():
-    global cfd
+    global cfd, list_freq
     if len(sys.argv) > 1:
         # Define the data path
         data_path = sys.argv[1]
@@ -127,7 +127,7 @@ def extract_cooccurence():
             tokens_norm = [t.lower() for t in tokens if t.isalpha() and (t.lower() not in stop)]
 
             # Count the Frequency for each word
-            list_freq = nltk.FreqDist(tokens_norm)
+            list_freq += nltk.FreqDist(tokens_norm)
 
             # Tokes neighbors window
             wnd = [''*WND_SIZE]
