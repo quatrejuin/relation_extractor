@@ -147,7 +147,9 @@ def extract_cooccurence():
     for term_i in cfd:
         cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i, cfd_N)
                                             for term_j in cfd[term_i] if cfd[term_i][term_j] > MIN_COOCC})
-        cfd[term_i].pop[term_i]
+        # Don't count the word itself as a relation
+        if term_i in cfd[term_i]:
+            cfd[term_i].pop(term_i)
     print("Time2: {}".format(time.time() - start_time))
     cfd_topn = nltk.ConditionalFreqDist()
     # Get the TOP N
