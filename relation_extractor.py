@@ -32,7 +32,7 @@ def get_exapn_for_query(query_text):
         #              (1-l)* sum_{i}{ score_term_term(term_i, term_j) * frequency_in_query(term_i)/length(Query) }
         # Here we do the sum part
         expans = expans + nltk.FreqDist(list_scores)
-    return expans_topn
+    return expans
 
 # Calculate P( term_j | term_i )
 # For the cooccurrence,
@@ -50,13 +50,16 @@ def get_exapn_for_query(query_text):
 #                       =  log10 ---------------------------------------------------------------
 #                                  sum_k  #coocc(term_i, term_k) x sum_k  #coocc(term_j, term_k)
 #
+#                                  #coocc(term_i, term_j) x N x TERM_DISTANCE x 2
+#                       =  log10 ---------------------------------------------------------------
+#                                  freq(term_i) x freq(term_j) x  (TERM_DISTANCE x 2) ^2
 def score_term_in_term(term_j, term_i, cfd_N):
     global cfd
     if PMI_FLAG:
-        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (cfd[term_i].N()*cfd[term_j].N()))
+        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (list_freq(term_i)*list_freq(term_j)))*(TERM_DISTANCE*2)**2
         r = pmi
     else:
-        p_term_j_in_term_i = cfd[term_i][term_j] / cfd[term_i].N()
+        p_term_j_in_term_i = cfd[term_i][term_j] / list_freq(term_i)*TERM_DISTANCE*2
         r = p_term_j_in_term_i
     return r
 
@@ -79,10 +82,9 @@ def score_term_in_term(term_j, term_i, cfd_N):
 def add_conditional_frequence_table(wnd):
     global cfd
     new_term = wnd[-1]
-    for term in wnd[-TERM_DISTANCE:-1]:
-        if term != new_term:
+    for term in wnd[-WND_SIZE:-1]:
             cfd[term][new_term] += 1
-            cfd[new_term][term] = cfd[term][new_term]
+        cfd[new_term][term] += 1
 
 
 # Read the cfd.json file
@@ -125,11 +127,10 @@ def extract_cooccurence():
             tokens_norm = [t.lower() for t in tokens if t.isalpha() and (t.lower() not in stop)]
 
             # Count the Frequency for each word
-            for w in tokens_norm:
-                list_freq[w] += 1
+            list_freq = nltk.FreqDist(tokens_norm)
 
             # Tokes neighbors window
-            wnd = []
+            wnd = [''*WND_SIZE]
             for t in tokens_norm:
                 wnd.append(t)
                 wnd = wnd[-WND_SIZE:]
@@ -142,17 +143,19 @@ def extract_cooccurence():
     # Filter the MIN_COOCC and Calculate the score
 
     # Calculate cfd.N()
-    cfd_N = cfd.N()
+    cfd_N = list_freq.N()*TERM_DISTANCE*2
     for term_i in cfd:
         cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i, cfd_N)
                                             for term_j in cfd[term_i] if cfd[term_i][term_j] > MIN_COOCC})
-
+        cfd[term_i].pop[term_i]
+    print("Time2: {}".format(time.time() - start_time))
     cfd_topn = nltk.ConditionalFreqDist()
     # Get the TOP N
     for w in cfd_filter:
         cfd_topn[w] = nltk.FreqDist(dict(cfd_filter[w].most_common(DOUBLE_TOP_N)))
+    print("Time3: {}".format(time.time() - start_time))
 
-    print("Time2: {}".format(time.time() - start_time))
+    print("Time4: {}".format(time.time() - start_time))
 
     file_tag = {
         'dist': '_dist'+str(TERM_DISTANCE),
@@ -165,14 +168,14 @@ def extract_cooccurence():
     ujson.dump(cfd_topn, open("/Users/jason.wu/Downloads/ap_cfd{dist}{min}{top}{stop}{pmi}.json".format(
         **file_tag), "w"), double_precision=3)
 
-    print("Time3: {}".format(time.time() - start_time))
+    print("Time5: {}".format(time.time() - start_time))
     pdb.set_trace()
     return cfd_topn
 
 
 # CONSTANTS
 TERM_DISTANCE = 5
-WND_SIZE = TERM_DISTANCE * 2
+WND_SIZE = TERM_DISTANCE + 1
 MIN_COOCC = 10
 TOP_N = 10
 DOUBLE_TOP_N = TOP_N * 2
