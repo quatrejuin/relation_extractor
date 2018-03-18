@@ -53,13 +53,17 @@ def get_exapn_for_query(query_text):
 #                                  #coocc(term_i, term_j) x N x TERM_DISTANCE x 2
 #                       =  log10 ---------------------------------------------------------------
 #                                  freq(term_i) x freq(term_j) x  (TERM_DISTANCE x 2) ^2
-def score_term_in_term(term_j, term_i, cfd_N):
+#
+#                                   #coocc(term_i, term_j) x N
+#                       =  log10 ---------------------------------------------------------------
+#                                  freq(term_i) x freq(term_j) x  (TERM_DISTANCE x 2)
+def score_term_in_term(term_j, term_i, N):
     global cfd
     if PMI_FLAG:
-        pmi = math.log10(cfd[term_i][term_j]*cfd_N / (list_freq[term_i]*list_freq[term_j]))*(TERM_DISTANCE*2)**2
+        pmi = math.log10(cfd[term_i][term_j]*N / (list_freq[term_i]*list_freq[term_j]*(TERM_DISTANCE*2)))
         r = pmi
     else:
-        p_term_j_in_term_i = cfd[term_i][term_j] / list_freq[term_i]*TERM_DISTANCE*2
+        p_term_j_in_term_i = cfd[term_i][term_j] / (list_freq[term_i]*TERM_DISTANCE*2)
         r = p_term_j_in_term_i
     return r
 
@@ -143,9 +147,9 @@ def extract_cooccurence():
     # Filter the MIN_COOCC and Calculate the score
 
     # Calculate cfd.N()
-    cfd_N = list_freq.N()*TERM_DISTANCE*2
+    total_N = list_freq.N()
     for term_i in cfd:
-        cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i, cfd_N)
+        cfd_filter[term_i] = nltk.FreqDist({term_j: score_term_in_term(term_j, term_i, total_N)
                                             for term_j in cfd[term_i] if cfd[term_i][term_j] > MIN_COOCC})
         # Don't count the word itself as a relation
         if term_i in cfd[term_i]:
