@@ -17,6 +17,16 @@ def get_expan_terms(aword):
     return [rw for rw, fw in cfd[aword].most_common(TOP_N)]
 
 
+
+def get_cfd(aword, nltk_index):
+    global cfd
+    if aword not in cfd:
+        cfd[aword] = nltk.FreqDist(get_concordance(aword, nltk_index))
+    # Don't count the word itself as a relation
+    if aword in cfd[aword]:
+        cfd[aword].pop(aword)
+
+
 def get_exapn_for_query(query_text):
     qt = nltk.word_tokenize(query_text)
     expans = nltk.FreqDist()
@@ -87,7 +97,7 @@ def add_conditional_frequence_table(wnd):
     global cfd
     new_term = wnd[-1]
     for term in wnd[-WND_SIZE:-1]:
-            cfd[term][new_term] += 1
+        cfd[term][new_term] += 1
         cfd[new_term][term] += 1
 
 
@@ -178,6 +188,68 @@ def extract_cooccurence():
     pdb.set_trace()
     return cfd_topn
 
+def load_tokens():
+    tokens_norm_list = ujson.load(open("/Users/jason.wu/Downloads/ap_tokens.json"))
+    return tokens_norm_list
+
+
+def save_file_alpha_tokens():
+    global tokens_norm_list, list_freq
+    if len(sys.argv) > 1:
+        # Define the data path
+        data_path = sys.argv[1]
+    start_time = time.time()
+    list_of_file = sorted(glob.glob(data_path))
+
+    stop = set(stopwords.words('english'))
+    if not STOP_FLAG:
+        stop = []
+    ps = PorterStemmer()
+
+    text_tag_re = re.compile(r'<TEXT>(.*?)</TEXT>', re.DOTALL)
+
+
+    for index, fname in enumerate(list_of_file):
+        print("No.{} File: {}".format(index, fname))
+        with open(fname, encoding='latin') as file:
+            raw = file.read()
+            # Extract all the <TEXT> field
+            result = text_tag_re.findall(raw)
+            texts = ' '.join(result)
+            # Tokenize
+            tokens = word_tokenize(texts)
+            # Filter Tokens is alphabetical and keep the in lower case
+            # Filter by stopwords
+            tokens_norm = [t.lower() for t in tokens if t.isalpha() and (t.lower() not in stop)]
+            tokens_norm_list += tokens_norm
+
+    ujson.dump(tokens_norm_list, open("/Users/jason.wu/Downloads/ap_tokens.json", "w"))
+    return tokens_norm_list
+
+# { billion: { 12:('year','plan'), 35:('have','of'), ....} , year: {}, we: {} ....}
+def build_index():
+    global token_index
+    print('N=', len(tokens_norm_list))
+    for index, token in enumerate(tokens_norm_list):
+        if index % 10000 == 0:
+            print("Index: {} Time: {}".format(index, time.ctime()))
+        if token not in token_index:
+            token_index[token] = {}
+        token_index[token].update({index: (tokens_norm_list[index-1], tokens_norm_list[index+1])})
+    ujson.dump(token_index, open("/Users/jason.wu/Downloads/ap_index.json", 'w'))
+
+def build_nltk_index(tokens):
+    nltk_index = nltk.ConcordanceIndex(tokens, key=lambda s: s.lower())
+    return nltk_index
+
+
+def get_concordance(target_word, nltk_index, left_margin=5, right_margin=5):
+    # Collect all the index or offset position of the target word
+    index_target = nltk_index.offsets(target_word)
+    concordance_txt=[]
+    for i in index_target:
+        concordance_txt += [x for x in tokens[i - left_margin:i + right_margin + 1]]
+    return concordance_txt
 
 # CONSTANTS
 TERM_DISTANCE = 5
@@ -187,13 +259,23 @@ TOP_N = 10
 DOUBLE_TOP_N = TOP_N * 2
 PMI_FLAG = True
 STOP_FLAG = True
+token_index = {}
+
+tokens_norm_list = []
+list_freq = nltk.FreqDist()
 
 # GLOBALS
 cfd = nltk.ConditionalFreqDist()
 
 
 if __name__ == "__main__":
-    extract_cooccurence()
+    #extract_cooccurence()
+    #tokens = save_file_alpha_tokens()
+    tokens = load_tokens()
+    print('Load finishied.')
+    nltk_index = build_nltk_index(tokens)
+    print('Build index finishied.')
+    pdb.set_trace()
 
 
 
